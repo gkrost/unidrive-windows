@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>unidrive-win</AssemblyName>
+    <RootNamespace>Unidrive.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Unidrive.Ipc/Unidrive.Ipc.csproj" />
+  </ItemGroup>
+</Project>

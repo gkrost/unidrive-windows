@@ -1,0 +1,15 @@
+## .NET / MSBuild
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+artifacts/
+TestResults/
+*.user
+*.suo
+*.nupkg
+
+## IDE
+.vs/
+.idea/
+.vscode/

@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- TargetFramework / Nullable / ImplicitUsings inherited from Directory.Build.props.
+       No package references: only the BCL (System.Net.Sockets, System.Text.Json). -->
+</Project>
