@@ -75,17 +75,26 @@ static async Task<int> MountCommand(string profile, string root)
 
     Func<string, IReadOnlyList<Unidrive.CfApi.FileEntry>> fetcher = prefix =>
     {
-        var entries = client.ListDirectoryAsync(prefix)
-            .GetAwaiter().GetResult();
-        return entries.Select(e => new Unidrive.CfApi.FileEntry(
-            e.Name, e.Size, e.LastWriteTimeMs, e.IsDirectory, e.IsHydrated)).ToList();
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var entries = client.ListDirectoryAsync(prefix, cts.Token)
+                .GetAwaiter().GetResult();
+            return entries.Select(e => new Unidrive.CfApi.FileEntry(
+                e.Name, e.Size, e.LastWriteTimeMs, e.IsDirectory, e.IsHydrated)).ToList();
+        }
+        catch
+        {
+            return Array.Empty<Unidrive.CfApi.FileEntry>();
+        }
     };
 
     Func<string, string?> hydrator = logicalPath =>
     {
         try
         {
-            return client.OpenReadAsync(logicalPath)
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            return client.OpenReadAsync(logicalPath, cts.Token)
                 .GetAwaiter().GetResult();
         }
         catch
@@ -98,8 +107,9 @@ static async Task<int> MountCommand(string profile, string root)
     {
         try
         {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             client.RequestAsync("hydration.dehydrate",
-                new Dictionary<string, object?> { ["path"] = logicalPath })
+                new Dictionary<string, object?> { ["path"] = logicalPath }, cts.Token)
                 .GetAwaiter().GetResult();
             return true;
         }
