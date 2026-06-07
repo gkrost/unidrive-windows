@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Unidrive.Ipc/Unidrive.Ipc.csproj" />
+    <ProjectReference Include="../Unidrive.CfApi/Unidrive.CfApi.csproj" />
   </ItemGroup>
 </Project>
