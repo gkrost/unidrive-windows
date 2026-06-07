@@ -98,7 +98,7 @@ internal static class Callbacks
     {
         if (_fetcher is null) return;
 
-        var fileIdentity = Marshal.ReadIntPtr(info, 8);
+        var fileIdentity = Marshal.ReadIntPtr(info, 88); // CF_CALLBACK_INFO.FileIdentity (x64)
         string prefix = Marshal.PtrToStringUni(fileIdentity) ?? "";
 
         var entries = _fetcher(prefix);
@@ -135,7 +135,7 @@ internal static class Callbacks
     {
         if (_hydrator is null) return;
 
-        var fileIdentity = Marshal.ReadIntPtr(info, 8);
+        var fileIdentity = Marshal.ReadIntPtr(info, 88); // CF_CALLBACK_INFO.FileIdentity (x64)
         string logicalPath = Marshal.PtrToStringUni(fileIdentity) ?? "";
 
         string? cachePath = _hydrator(logicalPath);
@@ -147,9 +147,9 @@ internal static class Callbacks
 
         try
         {
-            long transferKey = Marshal.ReadInt64(info, 40);
-            long reqOffset = Marshal.ReadInt64(parameters, 8);
-            long reqLength = Marshal.ReadInt64(parameters, 16);
+            long transferKey = Marshal.ReadInt64(info, 112); // CF_CALLBACK_INFO.TransferKey (x64)
+            long reqOffset = Marshal.ReadInt64(parameters, 16); // FETCHDATA.RequiredFileOffset (x64)
+            long reqLength = Marshal.ReadInt64(parameters, 24); // FETCHDATA.RequiredLength (x64)
 
             using var fs = new FileStream(cachePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             long remaining = fs.Length - reqOffset;
@@ -187,7 +187,7 @@ internal static class Callbacks
 
     private static void FailTransfer(IntPtr info)
     {
-        long transferKey = Marshal.ReadInt64(info, 40);
+        long transferKey = Marshal.ReadInt64(info, 112); // CF_CALLBACK_INFO.TransferKey (x64)
         var opInfo = BuildOperationInfo(transferKey, [], 0);
         var opParams = BuildTransferParams(0, 0, -1); // failure status
         Native.CfExecute(opInfo, opParams);
@@ -228,7 +228,7 @@ internal static class Callbacks
     {
         if (_dehydrator is null) return;
 
-        var fileIdentity = Marshal.ReadIntPtr(info, 8);
+        var fileIdentity = Marshal.ReadIntPtr(info, 88); // CF_CALLBACK_INFO.FileIdentity (x64)
         string logicalPath = Marshal.PtrToStringUni(fileIdentity) ?? "";
         if (string.IsNullOrEmpty(logicalPath)) return;
 
