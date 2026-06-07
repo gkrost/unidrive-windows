@@ -86,6 +86,49 @@ public sealed class IpcClient : IAsyncDisposable
     }
 
     /// <summary>
+    /// Open a file for reading via <c>hydration.open_read</c>. Triggers the daemon to download or
+    /// locate the file in cache. Returns the cache path on success, null on not-found.
+    /// </summary>
+    public async Task<string?> OpenReadAsync(string path, CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?> { ["handle"] = $"cli-{Guid.NewGuid():N}", ["path"] = path };
+        var r = await RequestAsync("hydration.open_read", payload, ct).ConfigureAwait(false);
+        return r.TryGetProperty("cache_path", out var cp) && cp.ValueKind == JsonValueKind.String
+            ? cp.GetString()
+            : null;
+    }
+
+    /// <summary>Close a handle opened with <see cref="OpenReadAsync"/>.</summary>
+    public async Task CloseHandleAsync(string path, CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?> { ["path"] = path };
+        await RequestAsync("hydration.close_handle", payload, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>List directory contents via <c>hydration.list</c>. Returns file entries.</summary>
+    public async Task<IReadOnlyList<FileEntry>> ListDirectoryAsync(
+        string prefix = "", CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?> { ["prefix"] = prefix };
+        var r = await RequestAsync("hydration.list", payload, ct).ConfigureAwait(false);
+
+        var entries = new List<FileEntry>();
+        if (r.TryGetProperty("entries", out var arr) && arr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in arr.EnumerateArray())
+            {
+                entries.Add(new FileEntry(
+                    Name: item.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
+                    Size: item.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0,
+                    LastWriteTimeMs: item.TryGetProperty("mtime_ms", out var mt) ? mt.GetInt64() : 0,
+                    IsDirectory: item.TryGetProperty("dir", out var d) && d.GetBoolean(),
+                    IsHydrated: item.TryGetProperty("hydrated", out var h) && h.GetBoolean()));
+            }
+        }
+        return entries;
+    }
+
+    /// <summary>
     /// Open a dedicated connection, issue <c>hydration.subscribe</c>, then stream the daemon's
     /// one-way event objects (hydrating / hydrated / view.invalidated / ...). Phase 1+ consumers
     /// drive CfAPI placeholder invalidation from these.

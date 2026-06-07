@@ -1,5 +1,9 @@
 namespace Unidrive.Ipc;
 
+/// <summary>An entry returned by <c>hydration.list</c>.</summary>
+public sealed record FileEntry(string Name, long Size, long LastWriteTimeMs, bool IsDirectory, bool IsHydrated);
+
+
 /// <summary>Reply of the <c>daemon.status</c> verb.</summary>
 public sealed record DaemonStatus(long UptimeMs, int ClientsConnected, bool RefreshInFlight, string? RefreshJobId);
 
