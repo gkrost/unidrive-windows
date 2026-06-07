@@ -30,11 +30,12 @@ public static class Native
     internal static extern int CfConnectSyncRoot(
         string syncRootPath,
         IntPtr callbackTable,
-        ulong connectFlags,
-        out ulong connectKey);
+        IntPtr callbackContext,
+        uint connectFlags,
+        out CF_CONNECTION_KEY connectKey);
 
-    [DllImport("cldapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    internal static extern int CfDisconnectSyncRoot(string syncRootPath);
+    [DllImport("cldapi.dll", ExactSpelling = true)]
+    internal static extern int CfDisconnectSyncRoot(CF_CONNECTION_KEY connectKey);
 
     [DllImport("cldapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     internal static extern int CfRevertPlaceholder(string filePath, uint revertFlags, IntPtr overlapped);
@@ -99,27 +100,37 @@ public static class Native
 
 // ──── CfAPI structs (x64 Win11 22H2+ layouts) ────
 
+[StructLayout(LayoutKind.Sequential)]
+internal struct CF_CONNECTION_KEY
+{
+    public long Value;
+}
+
 [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 internal struct CF_SYNC_REGISTRATION
 {
+    public int StructSize;
     [MarshalAs(UnmanagedType.LPWStr)] public string ProviderName;
     [MarshalAs(UnmanagedType.LPWStr)] public string ProviderVersion;
-    [MarshalAs(UnmanagedType.LPWStr)] public string ProviderDisplayName;
+    public IntPtr SyncRootIdentity;
+    public int SyncRootIdentityLength;
+    public IntPtr FileIdentity;
+    public int FileIdentityLength;
     public Guid ProviderId;
 }
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct CF_HYDRATION_POLICY
 {
-    public int Modifier;
-    public int Primary;
+    public ushort Primary;
+    public ushort Modifier;
 }
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct CF_POPULATION_POLICY
 {
-    public int Modifier;
-    public int Primary;
+    public ushort Primary;
+    public ushort Modifier;
 }
 
 [StructLayout(LayoutKind.Sequential)]

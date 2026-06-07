@@ -4,9 +4,12 @@ namespace Unidrive.CfApi;
 
 internal static class Callbacks
 {
-    private const int CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS = 0;
-    private const int CF_CALLBACK_TYPE_FETCH_DATA = 1;
-    private const int CF_CALLBACK_TYPE_DEHYDRATE = 17;
+    private const int CF_CALLBACK_TYPE_FETCH_DATA = 0;
+    private const int CF_CALLBACK_TYPE_VALIDATE_DATA = 1;
+    private const int CF_CALLBACK_TYPE_CANCEL_FETCH_DATA = 2;
+    private const int CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS = 3;
+    private const int CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE = 7;
+    private const int CF_CALLBACK_TYPE_NONE = -1;
 
     private static CfCallbackDelegate? _callbackDelegate;
     private static GCHandle _callbackHandle;
@@ -42,10 +45,14 @@ internal static class Callbacks
             },
             new CF_CALLBACK_REGISTRATION
             {
-                Type = CF_CALLBACK_TYPE_DEHYDRATE,
+                Type = CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE,
                 Callback = Marshal.GetFunctionPointerForDelegate(_callbackDelegate),
             },
-            default,
+            new CF_CALLBACK_REGISTRATION
+            {
+                Type = CF_CALLBACK_TYPE_NONE,
+                Callback = IntPtr.Zero,
+            },
         };
 
         int size = Marshal.SizeOf<CF_CALLBACK_REGISTRATION>();
@@ -81,7 +88,7 @@ internal static class Callbacks
             case CF_CALLBACK_TYPE_FETCH_DATA:
                 HandleFetchData(info, parameters);
                 break;
-            case CF_CALLBACK_TYPE_DEHYDRATE:
+            case CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE:
                 HandleDehydrate(info, parameters);
                 break;
         }

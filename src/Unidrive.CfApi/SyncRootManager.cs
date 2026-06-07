@@ -10,6 +10,7 @@ public sealed class SyncRootManager : IDisposable
     private readonly Func<string, bool>? _dehydrator;
     private bool _registered;
     private IntPtr _callbackTable;
+    private CF_CONNECTION_KEY _connectKey;
 
     public string SyncRootPath => _syncRootPath;
     public bool IsRegistered => _registered;
@@ -35,9 +36,9 @@ public sealed class SyncRootManager : IDisposable
 
         var registration = new CF_SYNC_REGISTRATION
         {
+            StructSize = Marshal.SizeOf<CF_SYNC_REGISTRATION>(),
             ProviderName = "Unidrive",
             ProviderVersion = "1.0.0",
-            ProviderDisplayName = "unidrive — Cloud Files API mount",
             ProviderId = Native.ProviderId,
         };
 
@@ -58,7 +59,7 @@ public sealed class SyncRootManager : IDisposable
             _syncRootPath, _fetcher, _hydrator, _dehydrator);
 
         hr = Native.CfConnectSyncRoot(
-            _syncRootPath, _callbackTable, 0, out _);
+            _syncRootPath, _callbackTable, IntPtr.Zero, 0, out _connectKey);
         if (hr < 0)
         {
             Native.CfUnregisterSyncRoot(_syncRootPath);
@@ -75,7 +76,7 @@ public sealed class SyncRootManager : IDisposable
     {
         if (!_registered) return;
 
-        try { Native.CfDisconnectSyncRoot(_syncRootPath); }
+        try { Native.CfDisconnectSyncRoot(_connectKey); }
         catch { }
 
         RevertAllPlaceholders(_syncRootPath);
