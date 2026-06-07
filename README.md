@@ -7,15 +7,19 @@ It is a **separate app** (per the unidrive "platforms are separate apps" rule) t
 - Plan: [`docs/dev/plans/win11-cfapi-mount.md`](https://github.com/gkrost/unidrive/blob/main/docs/dev/plans/win11-cfapi-mount.md)
 - Phase 0/1 spec: [`docs/dev/specs/win11-cfapi-phase01.md`](https://github.com/gkrost/unidrive/blob/main/docs/dev/specs/win11-cfapi-phase01.md)
 
-## Status — Phase 0.3 (IPC client skeleton)
+## Status — Phase 1.3 (IPC + CfAPI registration + FETCH_PLACEHOLDERS + FETCH_DATA)
 
-`Unidrive.Ipc` speaks the daemon's newline-delimited-JSON protocol over a Unix-domain socket
-(`%TEMP%/unidrive-ipc/unidrive-<profile>.sock`), replicating `IpcServer.defaultSocketPath` exactly,
-with the connection-pool + subscribe model from the spec. `Unidrive.Cli` round-trips `daemon.status`
-as the Phase 0.3 acceptance smoke test.
-
-Phase 1+ (not yet here): `Unidrive.CfApi` (the `cldflt` callback binding) and `Unidrive.WinHost`
-(the Windows Service that supervises the JVM daemon + owns the CfAPI sync root).
+| Phase | Module | Status |
+|-------|--------|--------|
+| 0.1 | `Unidrive.Recovery` — orphan-recovery tool (scan/revert/unregister/detach) | ✅ |
+| 0.3 | `Unidrive.Ipc` — AF_UNIX NDJSON client, pool, subscribe stream | ✅ |
+| 1.1 | `Unidrive.CfApi` — sync root registration (`CfRegisterSyncRoot`, `CfConnectSyncRoot`) | ✅ |
+| 1.6 | Teardown (`CfDisconnectSyncRoot` + revert placeholders + `CfUnregisterSyncRoot`) | ✅ |
+| 1.2 | FETCH_PLACEHOLDERS callback → `hydration.list` → `CfCreatePlaceholders` | ✅ |
+| 1.3 | FETCH_DATA callback → `hydration.open_read` → `CfExecute(TRANSFER_DATA)` | ✅ |
+| 1.5 | Live refresh via subscribe stream | ⬜ |
+| 1.4 | Dehydrate / free up space | ⬜ |
+| 2–4 | Writeback, shell UX, packaging | ⬜ |
 
 ## Build & run
 
@@ -30,6 +34,13 @@ dotnet test
 dotnet run --project src/Unidrive.Cli -- status --profile <profile>
 # -> connecting to C:\Users\...\Temp\unidrive-ipc\unidrive-<profile>.sock ...
 # -> OK - daemon up <N> ms, <K> client(s), refresh_in_flight=False, job=-
+
+# Phase 1.1: mount the sync root (requires daemon running)
+dotnet run --project src/Unidrive.Cli -- mount --profile <profile> --root <path>
+
+# Phase 0.1: recover orphaned placeholders
+dotnet run --project src/Unidrive.Recovery -- scan --path <dir>
+dotnet run --project src/Unidrive.Recovery -- clean --path <dir>
 ```
 
 ## Layout
@@ -37,10 +48,10 @@ dotnet run --project src/Unidrive.Cli -- status --profile <profile>
 | Path | Role |
 |------|------|
 | `src/Unidrive.Ipc` | NDJSON IPC client: socket-path resolution, connection pool, request/reply, subscribe stream |
-| `src/Unidrive.Cli` | `unidrive-win` — the `daemon.status` smoke client (Phase 0.3) |
-| `tests/Unidrive.Ipc.Tests` | unit tests (socket-path logic; no daemon required) |
-| `src/Unidrive.CfApi` *(later)* | the CfAPI (`cldflt`) callback ↔ hydration-verb binding (Phase 1) |
-| `src/Unidrive.WinHost` *(later)* | the Windows Service host + lifecycle (Phase 4) |
+| `src/Unidrive.Cli` | `unidrive-win` — CLI with `status`, `mount`, `unmount` commands |
+| `src/Unidrive.CfApi` | CfAPI (`cldflt`) P/Invoke bindings, `SyncRootManager`, callback dispatcher |
+| `src/Unidrive.Recovery` | Orphan-placeholder recovery tool (`scan`, `revert`, `unregister`, `clean`, `detach`) |
+| `tests/Unidrive.Ipc.Tests` | unit tests (socket-path logic, daemon.status round-trips; no daemon required) |
 
 ## Decisions (recorded in the unidrive plan)
 
