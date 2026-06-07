@@ -77,14 +77,18 @@ static async Task<int> MountCommand(string profile, string root)
     {
         try
         {
+            var logFile = Path.Combine(Path.GetTempPath(), "unidrive-cli.log");
+            File.AppendAllText(logFile, $"{DateTime.UtcNow:O} [FETCHER] calling list prefix='{prefix}'\n");
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var entries = client.ListDirectoryAsync(prefix, cts.Token)
                 .GetAwaiter().GetResult();
+            File.AppendAllText(logFile, $"{DateTime.UtcNow:O} [FETCHER] got {entries.Count} entries\n");
             return entries.Select(e => new Unidrive.CfApi.FileEntry(
                 e.Name, e.Size, e.LastWriteTimeMs, e.IsDirectory, e.IsHydrated)).ToList();
         }
-        catch
+        catch (Exception ex)
         {
+            try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "unidrive-cli.log"), $"{DateTime.UtcNow:O} [FETCHER] error: {ex}\n"); } catch { }
             return Array.Empty<Unidrive.CfApi.FileEntry>();
         }
     };

@@ -4,6 +4,15 @@ namespace Unidrive.CfApi;
 
 internal static class Callbacks
 {
+    private static string LogPath
+        => Path.Combine(Path.GetTempPath(), "unidrive-callback.log");
+
+    private static void Log(string msg)
+    {
+        try { System.IO.File.AppendAllText(LogPath, $"{DateTime.UtcNow:O} [{Environment.CurrentManagedThreadId}] {msg}\n"); }
+        catch { }
+    }
+
     private const int CF_CALLBACK_TYPE_FETCH_DATA = 0;
     private const int CF_CALLBACK_TYPE_VALIDATE_DATA = 1;
     private const int CF_CALLBACK_TYPE_CANCEL_FETCH_DATA = 2;
@@ -78,19 +87,27 @@ internal static class Callbacks
 
     private static void CallbackDispatcher(IntPtr info, IntPtr parameters)
     {
-        int cbType = Marshal.ReadInt32(parameters, 4);
-
-        switch (cbType)
+        try
         {
-            case CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS:
-                HandleFetchPlaceholders(info, parameters);
-                break;
-            case CF_CALLBACK_TYPE_FETCH_DATA:
-                HandleFetchData(info, parameters);
-                break;
-            case CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE:
-                HandleDehydrate(info, parameters);
-                break;
+            int cbType = Marshal.ReadInt32(parameters, 4);
+            Log($"callback type={cbType}");
+
+            switch (cbType)
+            {
+                case CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS:
+                    HandleFetchPlaceholders(info, parameters);
+                    break;
+                case CF_CALLBACK_TYPE_FETCH_DATA:
+                    HandleFetchData(info, parameters);
+                    break;
+                case CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE:
+                    HandleDehydrate(info, parameters);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"callback exception: {ex}");
         }
     }
 
@@ -100,8 +117,10 @@ internal static class Callbacks
 
         var fileIdentity = Marshal.ReadIntPtr(info, 88); // CF_CALLBACK_INFO.FileIdentity (x64)
         string prefix = Marshal.PtrToStringUni(fileIdentity) ?? "";
+        Log($"fetch-placeholders prefix='{prefix}' fileIdPtr=0x{fileIdentity:X}");
 
         var entries = _fetcher(prefix);
+        Log($"fetch-placeholders got {entries.Count} entries");
         if (entries.Count == 0) return;
 
         var placeholders = new CF_PLACEHOLDER_CREATE_INFO[entries.Count];
@@ -133,12 +152,33 @@ internal static class Callbacks
 
     private static void HandleFetchData(IntPtr info, IntPtr parameters)
     {
+        Log($"fetch-data hydrator={_hydrator is not null}");
         if (_hydrator is null) return;
 
+        // Dump raw bytes around FileIdentity offset (80-96) to diagnose layout
+        var raw = new long[3];
+        Marshal.Copy(info + 80, raw, 0, 3);
+        Log($"fetch-data raw[80..104]: 0x{raw[0]:X16} 0x{raw[1]:X16} 0x{raw[2]:X16}");
+
         var fileIdentity = Marshal.ReadIntPtr(info, 88); // CF_CALLBACK_INFO.FileIdentity (x64)
-        string logicalPath = Marshal.PtrToStringUni(fileIdentity) ?? "";
+        Log($"fetch-data fileIdentity=0x{fileIdentity:X}");
+
+        string? logicalPath;
+        try { logicalPath = Marshal.PtrToStringUni(fileIdentity); }
+        catch (Exception ex) { Log($"fetch-data PtrToStringUni error: {ex}"); logicalPath = null; }
+
+        logicalPath ??= "";
+        Log($"fetch-data logicalPath='{logicalPath}'");
+
+        if (string.IsNullOrEmpty(logicalPath))
+        {
+            Log("fetch-data empty logicalPath, failing transfer");
+            FailTransfer(info);
+            return;
+        }
 
         string? cachePath = _hydrator(logicalPath);
+        Log($"fetch-data cachePath='{cachePath}'");
         if (cachePath is null)
         {
             FailTransfer(info);
