@@ -40,33 +40,42 @@ internal static class Callbacks
         _callbackDelegate = CallbackDispatcher;
         _callbackHandle = GCHandle.Alloc(_callbackDelegate);
 
-        var table = new[]
+        var table = new List<CF_CALLBACK_REGISTRATION>
         {
-            new CF_CALLBACK_REGISTRATION
+            new()
             {
                 Type = CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS,
                 Callback = Marshal.GetFunctionPointerForDelegate(_callbackDelegate),
             },
-            new CF_CALLBACK_REGISTRATION
+        };
+
+        if (hydrator is not null)
+        {
+            table.Add(new()
             {
                 Type = CF_CALLBACK_TYPE_FETCH_DATA,
                 Callback = Marshal.GetFunctionPointerForDelegate(_callbackDelegate),
-            },
-            new CF_CALLBACK_REGISTRATION
+            });
+        }
+
+        if (dehydrator is not null || hydrator is not null)
+        {
+            table.Add(new()
             {
                 Type = CF_CALLBACK_TYPE_NOTIFY_DEHYDRATE,
                 Callback = Marshal.GetFunctionPointerForDelegate(_callbackDelegate),
-            },
-            new CF_CALLBACK_REGISTRATION
-            {
-                Type = CF_CALLBACK_TYPE_NONE,
-                Callback = IntPtr.Zero,
-            },
-        };
+            });
+        }
+
+        table.Add(new()
+        {
+            Type = CF_CALLBACK_TYPE_NONE,
+            Callback = IntPtr.Zero,
+        });
 
         int size = Marshal.SizeOf<CF_CALLBACK_REGISTRATION>();
-        IntPtr ptr = Marshal.AllocHGlobal(table.Length * size);
-        for (int i = 0; i < table.Length; i++)
+        IntPtr ptr = Marshal.AllocHGlobal(table.Count * size);
+        for (int i = 0; i < table.Count; i++)
             Marshal.StructureToPtr(table[i], ptr + i * size, false);
 
         return ptr;
@@ -172,8 +181,11 @@ internal static class Callbacks
 
         if (string.IsNullOrEmpty(logicalPath))
         {
-            Log("fetch-data empty logicalPath, failing transfer");
-            FailTransfer(info);
+            Log("fetch-data empty logicalPath, completing transfer with success");
+            long transferKey = Marshal.ReadInt64(info, 112);
+            var opInfo = BuildOperationInfo(transferKey, [], 0);
+            var opParams = BuildTransferParams(0, 0, 0); // status=0 → success, stops retries
+            Native.CfExecute(opInfo, opParams);
             return;
         }
 

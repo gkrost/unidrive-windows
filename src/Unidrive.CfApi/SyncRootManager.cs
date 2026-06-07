@@ -45,7 +45,7 @@ public sealed class SyncRootManager : IDisposable
         var policies = new CF_SYNC_POLICIES
         {
             StructSize = Marshal.SizeOf<CF_SYNC_POLICIES>(),
-            Hydration = new CF_HYDRATION_POLICY { Primary = 1 }, // PROGRESSIVE
+            Hydration = new CF_HYDRATION_POLICY { Primary = 2 }, // FULL
             Population = new CF_POPULATION_POLICY { Primary = 2 }, // FULL
         };
 
