@@ -17,9 +17,11 @@ It is a **separate app** (per the unidrive "platforms are separate apps" rule) t
 | 1.6 | Teardown (`CfDisconnectSyncRoot` + revert placeholders + `CfUnregisterSyncRoot`) | ✅ |
 | 1.2 | FETCH_PLACEHOLDERS callback → `hydration.list` → `CfCreatePlaceholders` | ✅ |
 | 1.3 | FETCH_DATA callback → `hydration.open_read` → `CfExecute(TRANSFER_DATA)` | ✅ |
-| 1.5 | Live refresh via subscribe stream | ⬜ |
-| 1.4 | Dehydrate / free up space | ⬜ |
-| 2–4 | Writeback, shell UX, packaging | ⬜ |
+| 1.5 | Live refresh via subscribe stream | code landed — live verification open (#4) |
+| 1.4 | Dehydrate / free up space | code landed — live verification open (#3) |
+| 2–4 | Writeback (#5), shell UX (#6), packaging (#7) | ⬜ post-MVP (except minimal install story, #7) |
+
+**MVP boundary** (decision [gkrost/unidrive#290](https://github.com/gkrost/unidrive/issues/290)): the **read-only tier** — Phases 0–1, including live verification of 1.4/1.5 (#3/#4) — is in the unidrive MVP, plus a minimal install story (#7). The release gate for this surface is #9, applying the shared acceptance criteria ([`docs/dev/specs/mvp-acceptance-criteria.md`](https://github.com/gkrost/unidrive/blob/main/docs/dev/specs/mvp-acceptance-criteria.md)). Writeback, shell UX, and MSIX/Authenticode packaging are post-MVP.
 
 ## Build & run
 
